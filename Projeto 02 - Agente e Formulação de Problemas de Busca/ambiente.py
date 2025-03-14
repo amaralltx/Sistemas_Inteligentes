@@ -1,5 +1,3 @@
-from objeto_movel import ObjetoMovel
-
 class Ambiente:
     """
     Classe que representa o ambiente do labirinto.
@@ -53,9 +51,9 @@ class Ambiente:
 
     def definir_saida(self, saida):
         """
-        Define a posição da saída no grid se a posição for válida.
+        Define a posição do estado final no grid se a posição for válida.
         """
-        resposta, mensagem = self.validar_posicao_elemento([saida], "saida")
+        resposta, mensagem = self.validar_posicao_objetivo(saida)
         if resposta:
             self.grid[self.altura - 1 - saida[0]][saida[1]] = '🟩'
             self.saida = tuple(saida)  # Transforma o array em uma tupla, tuplas não alteram o valor
@@ -66,12 +64,11 @@ class Ambiente:
         """
         Define a posição inicial do objeto_movel no grid se a posição for válida.
         """
-        resposta, mensagem = self.validar_posicao_elemento([estado_inicial], "inicio")
+        resposta, mensagem = self.validar_posicao_inicio(estado_inicial)
         if resposta:
             self.grid[self.altura - 1 - estado_inicial[0]][estado_inicial[1]] = '🟦'
             self.comeco = estado_inicial
-            self.objeto_movel.posicao= estado_inicial
-            self.objeto_movel.estado_inicial = estado_inicial
+            self.objeto_movel.definir_estado_inicial(estado_inicial)
             self.objeto_movel.historico_posicoes.append(estado_inicial)
             return resposta, mensagem
         return resposta, mensagem
@@ -95,7 +92,6 @@ class Ambiente:
 
         # Novas coordenadas do objeto
         coordX, coordY = nova_posicao
-
         self.grid[self.altura - 1 - antigoX][antigoY] = '⬜'  # Limpa a posição antiga
         self.grid[self.altura - 1 - coordX][coordY] = '🟦'  # Atualiza para a nova posição
 
@@ -109,48 +105,59 @@ class Ambiente:
         """
         return self.grid
 
-    # TODO essa função e a validar_movimento_objeto_movel são muito feias, separar uma função para cada ocasião para melhor entendimento do código
-    def validar_posicao_elemento(self, argumentos, elemento):
-        """
-        Valida se a posição fornecida é válida para o elemento especificado.
-        """
-        if elemento == "objeto_movel":
-            validador, nova_posicao = self.validar_movimento_objeto_movel(argumentos)
-            if validador == True:
-                return True, "Sem erro", nova_posicao 
-            else:
-                return False, "Impossível realizar o movimento", None
-        else:
-            # Para cada posição a ser validada...
-            for posicao in argumentos:
-                # Verifica se a posição está fora dos limites do grid
-                if posicao[0] < 0 or posicao[0] >= self.altura or posicao[1] < 0 or posicao[1] >= self.largura:
-                    return False, "Posição não pertence à Matriz"
-                # Se for uma parede, a chegada não é uma posição válida
-                if elemento == "parede" and (self.grid[self.altura - 1 - posicao[0]][posicao[1]] == '🟩' or self.grid[self.altura - 1 - posicao[0]][posicao[1]] == '🟦'):
-                    return False, "Não é possível adicionar uma parede no objeto_movel ou objetivo\n"
-            return True, "Sem erro"
-    
     def validar_movimento_objeto_movel(self, argumentos):
         # Checa com o objeto_movel se é uma direção válida dentre as possiveis
-        nova_posicao = self.objeto_movel.validar_direcao(argumentos)
-        if nova_posicao != -1:
+        direcao = argumentos
+        nova_posicao = self.objeto_movel.validar_direcao(direcao)
+        if nova_posicao != False:
             # Verifica se a nova posição está fora dos limites do grid
             if 0 > nova_posicao[0] or nova_posicao[0]>= self.altura or 0 > nova_posicao[1] or nova_posicao[1] >= self.largura:
-                return False, -1
+                return False, "Impossível realizar um movimento para fora do grid", None
             else:
                 # Verifica se a nova posição é uma parede
                 if self.grid[self.altura - 1 - nova_posicao[0]][nova_posicao[1]] == '⬛':
-                    return False, -1
+                    return False, "Impossível realizar o movimento, obstáculo no caminho!", None
                 
-        return True, nova_posicao
+        return True, "", nova_posicao
 
-    def verifica_estado(self):
-        """
-        Verifica se o objeto_movel chegou ao destino.
-        """
-        if self.saida == self.objeto_movel.ler_posicao():
-            return "chegou ao destino"
+         
+         
+    def validar_posicao_objetivo(self, estado_final):
+        if 0 > estado_final[0] or estado_final[0]>= self.altura or 0 > estado_final[1] or estado_final[1] >= self.largura:
+                return False, "O objetivo não pode ser inicializado fora da matriz"
+        return True, ""
     
-    def obter_posicao_objeto_movel(self):
-        return self.objeto_movel.ler_posicao()
+    def validar_posicao_inicio(self, estado_inicial):
+        if 0 > estado_inicial[0] or estado_inicial[0]>= self.altura or 0 > estado_inicial[1] or estado_inicial[1] >= self.largura:
+                return False, "O objeto não pode ser inicializado fora da matriz"
+        # Verifica se é a mesma posição que o objetivo
+        elif self.grid[self.altura - 1 - estado_inicial[0]][estado_inicial[1]] == '🟩':
+                return False, "O objeto não pode ser inicializado junto à entrada"
+        return True, ""
+    
+    def validar_posicao_parede(self, coordenadas):
+        for coordenada in coordenadas:
+            if 0 > coordenada[0] or coordenada[0]>= self.altura or 0 > coordenada[1] or coordenada[1] >= self.largura:
+                    return False, "A parede não pode ser inserida fora da matriz"
+            # Verifica se é a mesma posição que o objetivo ou objeto
+            elif self.grid[self.altura - 1 - coordenada[0]][coordenada[1]] == '🟩' or self.grid[self.altura - 1 - coordenada[0]][coordenada[1]] == '🟦':
+                    return False, "Não é possível inserir uma parede no objetivo ou objeto móvel"
+        return True, ""
+    
+    def obter_vizinhos(self, estado_atual):
+        """
+        Retorna um dicionário com as direções e os valores do grid nas posições vizinhas
+        a partir do estado atual do objeto_movel.
+        """
+        vizinhos = {}
+
+        for direcao, (dx, dy) in self.objeto_movel.DIRECOES.items():
+            nova_posicao = (estado_atual[0] + dx, estado_atual[1] + dy)
+            # Verifica se a nova posição está dentro dos limites do grid
+            if 0 <= nova_posicao[0] < self.altura and 0 <= nova_posicao[1] < self.largura:
+                valor = self.grid[self.altura - 1 - nova_posicao[0]][nova_posicao[1]]
+                vizinhos[direcao] = valor
+            else:
+                vizinhos[direcao] = None  # Fora dos limites do grid
+
+        return vizinhos
