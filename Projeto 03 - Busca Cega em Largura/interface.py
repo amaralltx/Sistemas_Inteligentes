@@ -313,11 +313,11 @@ class Interface:
         altura_celula = 710 / altura 
 
         # Carregando a imagem da saída
-        self.imagem_saida = Image.open("images/chegada.png")
+        self.imagem_saida = Image.open("assets/chegada.png")
         self.imagem_saida = self.imagem_saida.resize((int(largura_celula), int(altura_celula)), Image.Resampling.LANCZOS)
         self.imagem_saida_tk = ImageTk.PhotoImage(self.imagem_saida)
         # Carregando a imagem do objeto_movel
-        self.imagem_objeto_movel = Image.open("images/explorador.png")
+        self.imagem_objeto_movel = Image.open("assets/explorador.png")
         self.imagem_objeto_movel = self.imagem_objeto_movel.resize((int(largura_celula), int(altura_celula)), Image.Resampling.LANCZOS)
         self.imagem_objeto_movel_tk = ImageTk.PhotoImage(self.imagem_objeto_movel)
 
