@@ -69,7 +69,6 @@ class Interface:
                 f"Coordenada X: {self.agente.obter_estado_objeto()[0]}\n"
                 f"Coordenada Y: {self.agente.obter_estado_objeto()[1]}"
             ),
-            "ANALISAR" : lambda args: self.exibir_analise(),
             "HISTORICO" : lambda args: self.exibir_mensagem(f"Movimentos: {self.agente.objeto_movel.historico_movimentos}\nCusto: {self.agente.custo_acumulado}"),
             "BUSCAR" : lambda args: self.iniciar_busca(),
         }
@@ -91,7 +90,7 @@ class Interface:
         self.frame_input_inicial_cima.grid_columnconfigure(1, weight=1)
         self.frame_input_inicial_cima.grid_columnconfigure(2, weight=1)
         self.frame_input_inicial_cima.grid_columnconfigure(3, weight=1)
-        # self.frame_input_inicial_baixo.grid_columnconfigure(0, weight=1)
+        self.frame_input_inicial_baixo.grid_columnconfigure(0, weight=1)
         
         self.label_altura = CTkLabel(
             self.frame_input_inicial_cima,
@@ -214,10 +213,15 @@ class Interface:
         # Adicionando caixa de texto 
         self.caixa_texto = CTkTextbox(
             self.frame_input_principal,
-            state="disable"
         )
+        self.caixa_texto.insert("0.0", "▶ Ir X: move o objeto movel na direção X ∈ {N, S, L, O, NO, NE, SE, SO}\n"
+                                        "▶ Parede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas\n"
+                                        "▶ Lerpos: retorna a posição que o objeto movel se encontra\n"
+                                        "▶ Historico: retorna a ordem de movimento e custo total acumulado\n"
+                                        "▶ Buscar: inicia uma busca pelo menor caminho, se for possível a executa\n")
         self.caixa_texto.grid(row=1, column=0, padx=15, pady=(15, 0), sticky="nsew")
         self.caixa_texto.tag_add("center", "1.0", "end")
+        self.caixa_texto.configure(state="disabled")
 
         # Adicionando um input de texto centralizado
         self.input_comando = CTkEntry(
@@ -230,43 +234,18 @@ class Interface:
         self.input_comando.bind('<Return>', lambda event: self.receber_comando())
 
         # Adicionando um botão flutuante
-        self.botao_modal = CTkButton(
+        self.botao_comandos = CTkButton(
             self.frame_input_principal_baixo,
             text="Mostrar Comandos",
-            command=self.abrir_modal
+            command=lambda : self.exibir_mensagem("Ir X: move o objeto movel na direção X ∈ {N, S, L, O, NO, NE, SE, SO}\n"
+                                        "▶ Parede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas\n"
+                                        "▶ Lerpos: retorna a posição que o objeto movel se encontra\n"
+                                        "▶ Historico: retorna a ordem de movimento e custo total acumulado\n"
+                                        "▶ Buscar: inicia uma busca pelo menor caminho, se for possível a executa")
         )
-        self.botao_modal.grid(row=1, column=1, padx=15, pady=15, sticky="nsew")
+        self.botao_comandos.grid(row=1, column=1, padx=15, pady=15, sticky="nsew")
 
         return
-
-    def abrir_modal(self):
-        # Criando uma nova janela modal
-        self.modal = CTkToplevel(self.janela)
-        self.modal.title("Comandos")
-        self.modal.geometry("500x300")  # Aumentando o tamanho da modal
-
-        self.modal.grid_columnconfigure(0, weight=1)
-        self.modal.grid_rowconfigure(0, weight=1)
-        self.modal.grid_rowconfigure(1, weight=0)
-
-        # Adicionando conteúdo à modal
-        label_modal = CTkLabel(
-            self.modal,
-            text="Ir X: move o objeto_movel na direção X\nX ∈ {N, S, L, O, NO, NE, SE, SO}\n"
-            "\nLerpos: retorna a posição que o objeto_movel se encontra\n"
-            "\nParede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas",
-            wraplength=480
-        )
-        label_modal.grid(row=0, column=0, sticky="nsew", pady=(25, 0), padx=10)
-
-        botao_fechar = CTkButton(
-            self.modal,
-            text="Fechar",
-            width=150,
-            height=50,
-            command=self.modal.destroy
-        )
-        botao_fechar.grid(row=1, column=0, sticky="ns", pady=25, padx=10)
 
     def criar_ambiente(self):
         """
@@ -390,7 +369,8 @@ class Interface:
         if comando in self.comandos_disponiveis:
             self.comandos_disponiveis[comando](argumentos)
         else:
-            self.exibir_mensagem("Argumento inválido\nClique em Mostrar Comandos para ver o tutorial")     
+            self.exibir_mensagem("Argumento inválido\n"
+                                "Clique em Mostrar Comandos para ver o tutorial")     
 
 
     def validar_adicionar_parede(self, argumentos):
@@ -399,7 +379,8 @@ class Interface:
         """
         coordenadas = separar_coordenadas(argumentos)
         if coordenadas is None:
-            self.exibir_mensagem("Coordenadas inválidas\nClique em Mostrar Comandos para ver o tutorial")
+            self.exibir_mensagem("Coordenadas inválidas\n"
+                                "Clique em Mostrar Comandos para ver o tutorial")
             return
         validador, mensagem_de_erro = self.ambiente.validar_posicao_parede(coordenadas)
         if validador:
@@ -415,7 +396,8 @@ class Interface:
         Valida e move o objeto_movel na direção especificada.
         """
         if direcao is None:
-            self.exibir_mensagem("Direção inválida\nClique em Mostrar Comandos para ver o tutorial")
+            self.exibir_mensagem("Direção inválida\n"
+                                "Clique em Mostrar Comandos para ver o tutorial")
             return False
         validador, mensagem_de_erro, deslocamento = self.ambiente.validar_movimento_objeto_movel(direcao)
         
@@ -436,25 +418,34 @@ class Interface:
         Executa um ciclo de raciocínio do agente e atualiza o ambiente e o canvas.
         """
         # Executa o ciclo de raciocínio do agente
-        sucesso, nova_posicao = self.agente.ciclo_de_raciocinio()
+        self.exibir_mensagem("Iniciando busca...")
+        plano =self.agente.iniciar_plano_grafo()
+        self.agente.definir_plano(plano)
+        self.exibir_mensagem(f"Plano a ser seguido: {plano}")
+        self.executar_plano()
 
+    def executar_plano(self):
+        sucesso, nova_posicao = self.agente.ciclo_de_raciocinio()
+        self.exibir_mensagem(f"Executando ciclo: indo para {nova_posicao}")
         if sucesso:
+
             # Atualiza o ambiente e o canvas
             self.ambiente.atualizar_objeto_movel(nova_posicao)
             self.agente.definir_grid(self.ambiente.grid)
             self.atualizar_labirinto(nova_posicao, "objeto_movel")
 
             # Agendar o próximo ciclo após 500ms
-            self.janela.after(500, self.iniciar_busca)
+            self.janela.after(1000, self.executar_plano)
         else:
             self.exibir_mensagem("Plano concluído!")
+
 
     def exibir_mensagem(self, mensagem):
         """
         Exibe uma mensagem na caixa de texto.
         """
         self.caixa_texto.configure(state="normal")
-        self.caixa_texto.insert("end", f"# {mensagem}\n")
+        self.caixa_texto.insert("end", f"▶ {mensagem}\n")
         self.caixa_texto.configure(state="disable")
         
     def atualizar_labirinto(self, coordenadas, elemento):
@@ -515,12 +506,7 @@ class Interface:
                 mensagem = f"O objeto_movel chegou ao destino final!\nCusto total: {self.agente.custo_acumulado}"
                 CTkMessagebox(title="Objetivo Alcançado", message=mensagem)
             self.canvas_labirinto.moveto(self.imagem_objeto_movel, x0, y0)
-    
-    def exibir_analise(self):
-        estado_atual = self.agente.obter_estado_objeto()
-        vizinhos = self.ambiente.obter_vizinhos(estado_atual)
-        self.exibir_mensagem(f"Scan do ambiente: \n{formatar_vizinhos(vizinhos)}")
-    
+
 ########################################################################################
 # Funções de manipulação de string
  

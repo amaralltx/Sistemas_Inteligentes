@@ -112,15 +112,16 @@ class Ambiente:
         if nova_posicao != False:
             # Verifica se a nova posição está fora dos limites do grid
             if 0 > nova_posicao[0] or nova_posicao[0]>= self.altura or 0 > nova_posicao[1] or nova_posicao[1] >= self.largura:
-                return False, "Impossível realizar um movimento para fora do grid", None
+                return False, "Impossível realizar um movimento para fora do grid.", None
             else:
                 # Verifica se a nova posição é uma parede
                 if self.grid[self.altura - 1 - nova_posicao[0]][nova_posicao[1]] == '⬛':
-                    return False, "Impossível realizar o movimento, obstáculo no caminho!", None
-                
-        return True, "", nova_posicao
-
-         
+                    return False, "Impossível realizar o movimento, obstáculo no caminho!", None    
+    
+            return True, "", nova_posicao
+        
+        return False, "Impossível realiza o movimento, direção inválida.", None
+    
          
     def validar_posicao_objetivo(self, estado_final):
         if 0 > estado_final[0] or estado_final[0]>= self.altura or 0 > estado_final[1] or estado_final[1] >= self.largura:

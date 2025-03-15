@@ -180,15 +180,10 @@ class Agente:
         """
         Executa um ciclo de raciocínio do agente.
         """
-        # Recebe o plano a partir da busca em largura
-        plano = self.iniciar_plano_grafo()
-        self.definir_plano(plano)
-
         estado_atual = self.obter_estado_objeto()
-        # Retira a próxima ação do plano
+        # breakpoint()
         if self.plano:
             proxima_acao = self.plano.pop(0)
-            print(f"Próxima ação: {proxima_acao}")
             nova_posicao = self.estado_sucessor(proxima_acao, estado_atual)
             self.ir(proxima_acao, nova_posicao)
             return True, nova_posicao
