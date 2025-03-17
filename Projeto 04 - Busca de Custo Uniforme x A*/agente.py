@@ -63,67 +63,152 @@ class Agente:
                         if estado_sucessor not in self.grafo.nos:
                             self.grafo.adicionar_no(estado_sucessor)
                         self.grafo.adicionar_aresta(estado_atual, estado_sucessor, direcao_vizinho)
-        self.grafo.exibir_grafo()
+        # self.grafo.exibir_grafo()
 
-        return self.buscar_rota_largura()
-               
-    def buscar_rota_largura(self):
+
+    def buscar_rota_uniforme(self):
         """
-        Executa a busca em largura (BFS) para encontrar o caminho até o objetivo.
-        Retorna o caminho em direções e coordenadas, ou None se não encontrar.
+        Executa a busca pelo menor caminho usando uma estratégia baseada na busca de menor custo, algortimo inspirado Dijkstra
+        mas apenas realiza a busca até encontrar a saída.
+        
+        Retorna:
+            - Uma tupla contendo o caminho em direções e coordenadas.
+            - None caso não encontre um caminho até o objetivo.
         """
-        # Define o objetivo e início como tuplas, pois não serão alterados
+        
+        # Define o objetivo e o ponto inicial como tuplas (imutáveis para facilitar uso em dicionários)
         objetivo = tuple(self.estado_objetivo)
         inicio = tuple(self.obter_estado_objeto())
+        
+        # Dicionário para armazenar o menor custo conhecido para cada nó visitado
+        custo_minimo = {inicio: 0}
+        
+        # Fila de prioridade (MinHeap) para explorar os nós com menor custo primeiro
+        heap = MinHeap()
 
-        # Reinicia o estado dos nós para evitar interferências de execuções anteriores
-        for no in self.grafo.nos.values():
-            no.visitado = False
+        # Adiciona o estado inicial à heap com custo 0, caminho de direções vazio, caminho de coordenada com o próprio nó e 0 pois não tem heuristica
+        heap.inserir(EstadoBusca(inicio, [], [inicio], 0, 0))  
 
-        # Inicializa a fila com o nó inicial e o caminho percorrido até ele (apenas ele mesmo)
-        fila = [(self.grafo.nos[inicio], [], [inicio], 0)]  # (nó, caminho_direcao, caminho_coordenadas, custo_total)
+        while heap:
+            # Remove o nó com menor custo da heap (garante que expandimos o caminho mais barato primeiro)
+            no_atual = heap.remover_min()
 
-        while fila:
-            # Remove o primeiro elemento da fila (FIFO)
-            no_atual, caminho_direcao, caminho_coordenadas, custo_total = fila.pop(0)
-
-            # Marca como visitado
-            no_atual.visitado = True
-
-            # Se chegou ao objetivo, retorna o caminho encontrado
+            # Se o nó atual for o objetivo, retornamos o caminho encontrado
             if no_atual.identificador == objetivo:
-                print(f"Achou! Rota: {caminho_direcao}\n{caminho_coordenadas}")
-                return caminho_direcao, caminho_coordenadas
+                print(f"Achou! Rota: {no_atual.caminho_direcao}\n{no_atual.caminho_coordenada}")
+                return no_atual.caminho_direcao, no_atual.caminho_coordenada
 
-            # Percorre os vizinhos do nó atual
-            for identificador, (direcao, custo_vizinho) in no_atual.vizinhos.items():
-                if not self.grafo.nos[identificador].visitado:
-                    self.grafo.nos[identificador].visitado = True
-                    # Criamos novas listas para evitar a mutabilidade
-                    novo_caminho_direcao = caminho_direcao + [direcao]
-                    novo_caminho_coordenadas = caminho_coordenadas + [identificador]
-                    fila.append((self.grafo.nos[identificador], novo_caminho_direcao, novo_caminho_coordenadas, custo_total + custo_vizinho))
+            # Explora os vizinhos do nó atual
+            for identificador, (direcao, custo_vizinho) in self.grafo.nos[no_atual.identificador].vizinhos.items():
+                # Calcula o custo total para alcançar este vizinho a partir do nó atual
+                custo_total = no_atual.custo_acumulado + custo_vizinho
 
-        # Caso a fila esvazie e não tenha encontrado o objetivo
+                # Se o vizinho ainda não foi visitado ou encontramos um caminho mais barato até ele
+                if identificador not in custo_minimo or custo_total < custo_minimo[identificador]:
+                    # Atualiza o custo mínimo necessário para chegar até este vizinho
+                    custo_minimo[identificador] = custo_total
+
+                    # Constrói os caminhos de direção e coordenadas para este novo estado
+                    novo_caminho_direcao = no_atual.caminho_direcao + [direcao]
+                    novo_caminho_coordenadas = no_atual.caminho_coordenada + [identificador]
+
+                    # Insere o novo estado na heap para ser processado futuramente
+                    heap.inserir(EstadoBusca(identificador, novo_caminho_direcao, novo_caminho_coordenadas, custo_total, 0))
+
+        # Se a heap esvaziar sem encontrar o objetivo, significa que não há caminho possível
+        print("Objetivo não encontrado!")
+        return None
+    
+    def buscar_rota_a_estrela(self):
+        """
+        Executa a busca pelo menor caminho usando o algoritmo A*.
+        O A* busca o caminho de menor custo, utilizando a soma do custo atual do caminho mais a heurística, que estima o custo restante até o objetivo.
+
+        Retorna:
+            - Uma tupla contendo o caminho em direções e coordenadas.
+            - None caso não encontre um caminho até o objetivo.
+        """
+        
+        # Define o objetivo e o ponto inicial como tuplas (imutáveis para facilitar uso em dicionários)
+        objetivo = tuple(self.estado_objetivo)
+        inicio = tuple(self.obter_estado_objeto())
+        
+        # Dicionário para armazenar o menor custo conhecido para cada nó visitado
+        custo_minimo = {inicio: 0}
+        
+        # Fila de prioridade (MinHeap) para explorar os nós com menor f(n) primeiro
+        heap = MinHeap()
+        
+        # Calcula a heurística do estado inicial
+        heuristica_inicial = self.calcular_heuristica(inicio, objetivo)
+        
+        # Adiciona o estado inicial à heap com custo 0, caminho de direções vazio, caminho de coordenada com o próprio nó e a f_inicial
+        heap.inserir(EstadoBusca(inicio, [], [inicio], 0, heuristica_inicial))  
+
+        while heap:
+            # Remove o nó com menor f(n) da heap
+            no_atual = heap.remover_min()
+            
+            # Debug: Imprime informações sobre o nó atual
+            print(f"No atual: {no_atual.identificador}\n"
+                f"Caminho direção: {no_atual.caminho_direcao}\n"
+                f"Caminho coordenadas: {no_atual.caminho_coordenada}\n"
+                f"Custo acumulado: {no_atual.custo_acumulado}\n"
+                f"Heuristica: {no_atual.heuristica}\n"
+                f"f(n): {no_atual.fatorial_de_custo}\n\n")
+
+            # Se o nó atual for o objetivo, retornamos o caminho encontrado
+            if no_atual.identificador == objetivo:
+                print(f"Achou! Rota: {no_atual.caminho_direcao}\n{no_atual.caminho_coordenada}")
+                return no_atual.caminho_direcao, no_atual.caminho_coordenada
+
+            # Explora os vizinhos do nó atual
+            for identificador, (direcao, custo_vizinho) in self.grafo.nos[no_atual.identificador].vizinhos.items():
+                # Calcula o custo total para alcançar este vizinho a partir do nó atual
+                custo_total = no_atual.custo_acumulado + custo_vizinho
+
+                # Calcula a heurística do vizinho
+                heuristica_vizinho = self.calcular_heuristica(identificador, objetivo)
+
+                # Se o vizinho ainda não foi visitado OU encontramos um caminho mais barato até ele
+                if identificador not in custo_minimo or custo_total < custo_minimo[identificador]:
+                    # Atualiza o custo mínimo necessário para chegar até este vizinho
+                    custo_minimo[identificador] = custo_total
+
+                    # Constrói os caminhos de direção e coordenadas para este novo estado
+                    novo_caminho_direcao = no_atual.caminho_direcao + [direcao]
+                    novo_caminho_coordenadas = no_atual.caminho_coordenada + [identificador]
+
+                    # Insere o novo estado na heap para ser processado futuramente
+                    heap.inserir(EstadoBusca(identificador, novo_caminho_direcao, novo_caminho_coordenadas, custo_total, heuristica_vizinho))
+
+        # Se a heap esvaziar sem encontrar o objetivo, significa que não há caminho possível
         print("Objetivo não encontrado!")
         return None
 
+    
+    def calcular_heuristica(self, estado_atual, objetivo):
         """
-        Fila
-        A fila armazena os nós que ainda precisam ser explorados.
-        Cada elemento da fila é uma tupla no formato (vizinho, caminho_até_agora), onde:
-            vizinho: O próximo nó a ser visitado.
-            caminho_até_agora: Uma lista que contém o caminho percorrido até chegar a esse nó.
+        Calcula a heurística baseada na distância de Chebyshev entre o estado atual e o objetivo.
+
+        A distância de Chebyshev é o máximo das diferenças absolutas nas coordenadas x e y dos dois pontos.
+        Esse valor representa o número mínimo de movimentos necessários para mover de um ponto ao outro, 
+        considerando que o agente pode se mover diagonalmente e que um movimento na diagonal nada mais é 
+        do que a soma de um movimento na vertical com um na horizontal. A heurística por si só é otimista quando
+        no labirinto, mas ao ser utilizada junto com custo de deslocamento até o estado atual, resulta em uma solução ótima
         
-        Vizinho:
-        vizinho é um nó conectado ao nó atual (no_atual) no grafo.
-        Ele representa uma posição no grid que pode ser alcançada a partir do nó atual.
+        Args:
+            estado_atual: O identificador (tupla de coordenadas) do estado atual.
+            objetivo: O identificador (tupla de coordenadas) do estado objetivo.
+
+        Returns:
+            A distância (heuristica) entre o estado atual e o objetivo.
+        """
+        x_atual, y_atual = estado_atual
+        x_objetivo, y_objetivo = objetivo
         
-        Caminho:
-        caminho é a lista de nós visitados até o nó atual.
-        caminho + [vizinho] cria uma nova lista que adiciona o vizinho ao final do caminho atual, representando o caminho atualizado até o próximo nó.
-         """
-        return None
+        return max(abs(x_atual - x_objetivo), abs(y_atual - y_objetivo))
+
 
     def ir(self, direcao, nova_posicao):
         """
@@ -191,11 +276,12 @@ class Agente:
 
     def obter_direcoes_validas(self):
         return self.objeto_movel.DIRECOES
-
+        
     def definir_plano(self, plano_direcao, plano_coordenada):
         """
         Define o plano de ações para o agente.
         """
+        plano_coordenada.pop(0) # Remove a coordenada inicial
         self.plano_direcao = plano_direcao
         self.plano_coordenada = plano_coordenada
 

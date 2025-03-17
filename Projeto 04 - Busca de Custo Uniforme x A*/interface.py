@@ -82,7 +82,8 @@ class Interface:
             "HISTORICO": lambda args: self.exibir_mensagem(
                 f"Movimentos: {self.agente.objeto_movel.historico_movimentos}\nCusto: {self.agente.custo_acumulado}"
             ),
-            "BUSCAR": lambda args: self.iniciar_busca(),
+            "BUSCA_UNIFORME": lambda args: self.iniciar_busca("BUSCA_UNIFORME"),
+            "BUSCA_A": lambda args: self.iniciar_busca("BUSCA_A"),
         }
 
     def inicializa_frame_input_inicial(self):
@@ -469,22 +470,30 @@ class Interface:
             self.exibir_mensagem(mensagem_de_erro)
             return False
 
-    def iniciar_busca(self):
+    def iniciar_busca(self, tipo_de_busca):
         """
         Executa um ciclo de raciocínio do agente e atualiza o ambiente e o canvas.
         """
         # Executa o ciclo de raciocínio do agente
         self.exibir_mensagem("Iniciando busca...")
-        sequencia_direcao, sequencia_coordenadas = self.agente.iniciar_plano_grafo()
+        self.agente.iniciar_plano_grafo()
+        if tipo_de_busca == "BUSCA_UNIFORME":
+            sequencia_direcao, sequencia_coordenadas = self.agente.buscar_rota_uniforme()
+        elif tipo_de_busca == "BUSCA_A":
+            sequencia_direcao, sequencia_coordenadas = self.agente.buscar_rota_a_estrela()
+        else:
+            self.exibir_mensagem("Erro, tipo de busca não encontrado")
+            return
+        
         self.agente.definir_plano(sequencia_direcao, sequencia_coordenadas)
         self.exibir_mensagem(f"Plano a ser seguido: {sequencia_direcao}")
         self.executar_plano()
 
     def executar_plano(self):
         sucesso, nova_posicao = self.agente.ciclo_de_raciocinio()
-        self.exibir_mensagem(f"Executando ciclo: indo para {nova_posicao}")
         if sucesso:
 
+            self.exibir_mensagem(f"Executando ciclo: indo para {nova_posicao}")
             # Atualiza o ambiente e o canvas
             self.ambiente.atualizar_objeto_movel(nova_posicao)
             self.agente.definir_grid(self.ambiente.grid)
@@ -493,7 +502,7 @@ class Interface:
             # Agendar o próximo ciclo após 500ms
             self.janela.after(1000, self.executar_plano)
         else:
-            self.exibir_mensagem("Plano concluído!")
+            self.exibir_mensagem(f"Plano concluído! Custo total: {self.agente.custo_acumulado}")
 
     def exibir_mensagem(self, mensagem):
         """
