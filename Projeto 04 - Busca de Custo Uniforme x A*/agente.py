@@ -18,11 +18,10 @@ class Agente:
         self.objeto_movel = objeto_movel
         self.estado_objetivo = []  # Objeto a ser alcançado ao executar o plano
         self.grid_interno = []  # Representação interna do grid
-        self.plano = [] 
+        self.plano_coordenada = []
+        self.plano_direcao= [] 
         self.custo_acumulado = 0
         self.grid = []
-        # Dicionário para as listas de adjacência.
-        # Ex: (0, 0): [('N', (1, 0)), ('L', (0,1))] = nó (0,0) liga a (1,0) pelo norte e (0,1) pelo leste
         self.grafo = Grafo()
 
     def definir_estado_objetivo(self, objetivo):
@@ -66,33 +65,49 @@ class Agente:
                         self.grafo.adicionar_aresta(estado_atual, estado_sucessor, direcao_vizinho)
         self.grafo.exibir_grafo()
 
-        # TODO implementar a busca uniforme ao grafo
-        breakpoint()
-        # return self.buscar_rota_largura()
-
+        return self.buscar_rota_largura()
+               
     def buscar_rota_largura(self):
-        # Define o objetivo e inicio como tuplas, já que não serão alteradas
+        """
+        Executa a busca em largura (BFS) para encontrar o caminho até o objetivo.
+        Retorna o caminho em direções e coordenadas, ou None se não encontrar.
+        """
+        # Define o objetivo e início como tuplas, pois não serão alterados
         objetivo = tuple(self.estado_objetivo)
         inicio = tuple(self.obter_estado_objeto())
-        visitados = set()
-        # Começa com uma string vazia pois não houve direção para chegar ao começo
-        fila = [(("", inicio), [inicio])]
+
+        # Reinicia o estado dos nós para evitar interferências de execuções anteriores
+        for no in self.grafo.nos.values():
+            no.visitado = False
+
+        # Inicializa a fila com o nó inicial e o caminho percorrido até ele (apenas ele mesmo)
+        fila = [(self.grafo.nos[inicio], [], [inicio], 0)]  # (nó, caminho_direcao, caminho_coordenadas, custo_total)
 
         while fila:
-            # Remove o primeiro elemento da fila e altera o caminho para qual foi o caminho até ele
-            no_atual, caminho = tuple(fila.pop(0))
-            # no_atual[0] = direção
-            # no_atual[1] = coordenadas
-            if no_atual[1] == objetivo:
-                # Retorna a rota formatada, a partir do caminho
-                return self.obter_rota_caminho(caminho)
-            elif no_atual[1] not in visitados:
-                visitados.add(no_atual)
-                # Percorre todos os vizinhos do no atual
-                for vizinho in self.grafo[no_atual[1]]:
-                    if vizinho not in visitados:
-                        # Adiciona o vizinho na fila, adicionando ele mesmo ao caminho percorrido
-                        fila.append((vizinho, caminho + [vizinho]))
+            # Remove o primeiro elemento da fila (FIFO)
+            no_atual, caminho_direcao, caminho_coordenadas, custo_total = fila.pop(0)
+
+            # Marca como visitado
+            no_atual.visitado = True
+
+            # Se chegou ao objetivo, retorna o caminho encontrado
+            if no_atual.identificador == objetivo:
+                print(f"Achou! Rota: {caminho_direcao}\n{caminho_coordenadas}")
+                return caminho_direcao, caminho_coordenadas
+
+            # Percorre os vizinhos do nó atual
+            for identificador, (direcao, custo_vizinho) in no_atual.vizinhos.items():
+                if not self.grafo.nos[identificador].visitado:
+                    self.grafo.nos[identificador].visitado = True
+                    # Criamos novas listas para evitar a mutabilidade
+                    novo_caminho_direcao = caminho_direcao + [direcao]
+                    novo_caminho_coordenadas = caminho_coordenadas + [identificador]
+                    fila.append((self.grafo.nos[identificador], novo_caminho_direcao, novo_caminho_coordenadas, custo_total + custo_vizinho))
+
+        # Caso a fila esvazie e não tenha encontrado o objetivo
+        print("Objetivo não encontrado!")
+        return None
+
         """
         Fila
         A fila armazena os nós que ainda precisam ser explorados.
@@ -114,7 +129,6 @@ class Agente:
         """
         Executa o movimento do agente na direção especificada.
         """
-        print(f"Agente: Executando movimento {direcao}")
         self.custo_acumulado += self.CUSTOS[direcao]
         self.objeto_movel.mover(direcao, nova_posicao)
 
@@ -178,11 +192,12 @@ class Agente:
     def obter_direcoes_validas(self):
         return self.objeto_movel.DIRECOES
 
-    def definir_plano(self, plano):
+    def definir_plano(self, plano_direcao, plano_coordenada):
         """
         Define o plano de ações para o agente.
         """
-        self.plano = plano
+        self.plano_direcao = plano_direcao
+        self.plano_coordenada = plano_coordenada
 
     def obter_rota_caminho(self, caminho):
         """
@@ -199,11 +214,9 @@ class Agente:
         """
         Executa um ciclo de raciocínio do agente.
         """
-        estado_atual = self.obter_estado_objeto()
-        # breakpoint()
-        if self.plano:
-            proxima_acao = self.plano.pop(0)
-            nova_posicao = self.estado_sucessor(proxima_acao, estado_atual)
+        if self.plano_direcao:
+            proxima_acao = self.plano_direcao.pop(0)
+            nova_posicao = self.plano_coordenada.pop(0)
             self.ir(proxima_acao, nova_posicao)
             return True, nova_posicao
         else:

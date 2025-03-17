@@ -475,9 +475,9 @@ class Interface:
         """
         # Executa o ciclo de raciocínio do agente
         self.exibir_mensagem("Iniciando busca...")
-        plano = self.agente.iniciar_plano_grafo()
-        self.agente.definir_plano(plano)
-        self.exibir_mensagem(f"Plano a ser seguido: {plano}")
+        sequencia_direcao, sequencia_coordenadas = self.agente.iniciar_plano_grafo()
+        self.agente.definir_plano(sequencia_direcao, sequencia_coordenadas)
+        self.exibir_mensagem(f"Plano a ser seguido: {sequencia_direcao}")
         self.executar_plano()
 
     def executar_plano(self):

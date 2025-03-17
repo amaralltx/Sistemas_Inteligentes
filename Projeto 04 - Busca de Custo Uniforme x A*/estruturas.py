@@ -1,26 +1,15 @@
-CUSTOS = {
-    "N": 1,
-    "S": 1,
-    "L": 1,
-    "O": 1,
-    "NE": 1.5,
-    "SE": 1.5,
-    "NO": 1.5,
-    "SO": 1.5,
-}
-
-# Dicionário para criar uma aresta entre o nó de saída ao nó de chegada junto
-DIRECAO_OPOSTA = {
-    "N": "S",
-    "S": "N",
-    "L": "O",
-    "O": "L",
-    "NE": "SE",
-    "SE": "NE",
-    "NO": "SO",
-    "SO": "NO",
-}
 class Grafo:
+    # Dicionário para criar uma aresta entre o nó de saída ao nó de chegada junto
+    DIRECAO_OPOSTA = {
+        "N": "S",
+        "S": "N",
+        "L": "O",
+        "O": "L",
+        "NE": "SO",
+        "SE": "NO",
+        "NO": "SE",
+        "SO": "NE",
+    }
     def __init__(self):
         self.nos = {} # Dicionário em que a chave é a coordenada e o valor o próprio nó
     
@@ -33,13 +22,11 @@ class Grafo:
             no_chegada in self.nos and 
             no_chegada not in self.nos[no_saida].vizinhos):
             self.nos[no_saida].adicionar_vizinho(no_chegada, direcao)
-            self.nos[no_chegada].adicionar_vizinho(no_saida, DIRECAO_OPOSTA[direcao])
+            self.nos[no_chegada].adicionar_vizinho(no_saida, self.DIRECAO_OPOSTA[direcao])
     
     def obter_vizinhos(self, no):
         return self.no.vizinhos if no in self.nos else []
     
-    def obter_custo_total(self, no):
-        return self.no.custo_total if no in self.nos else []
     
     def exibir_grafo(self):
         """
@@ -55,16 +42,22 @@ class Grafo:
             print()
 
 class No:
+    CUSTOS = {
+        "N": 1,
+        "S": 1,
+        "L": 1,
+        "O": 1,
+        "NE": 1.5,
+        "SE": 1.5,
+        "NO": 1.5,
+        "SO": 1.5,
+    }
+        
     def __init__(self, identificador):
         self.identificador = identificador
         self.vizinhos = {} # Dicionário com os identificadores dos vizinhos e uma tupla de direção e custo da aresta
-        self.caminho = [] # caminho percorrido até chegar ao nó
-        self.custo_total = float('inf') # custo total até chegar ao nó
         self.visitado = False # validador para quando o nó for visitado não ser adicionado novamente à fila
     
     def adicionar_vizinho(self, vizinho, direcao):
         if vizinho not in self.vizinhos:
-            self.vizinhos[vizinho] = (direcao, CUSTOS[direcao])
-
-    def obter_custo(self, vizinho):
-        return self.vizinhos.get(vizinho, (None, None))
+            self.vizinhos[vizinho] = (direcao, self.CUSTOS[direcao])
