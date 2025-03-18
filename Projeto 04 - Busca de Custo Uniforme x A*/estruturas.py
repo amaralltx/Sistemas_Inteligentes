@@ -72,7 +72,12 @@ class No:
 # Utilizamos uma classe que guarda o estado atual da busca em vez de um dicionário devido ao tamanho do problema ser pequeno e por garantir uma melhor legibilidade
 class EstadoBusca:
     def __init__(
-        self, identificador, caminho_direcao, caminho_coordenada, custo_acumulado, heuristica
+        self,
+        identificador,
+        caminho_direcao,
+        caminho_coordenada,
+        custo_acumulado,
+        heuristica,
     ):
         self.identificador = identificador
         self.caminho_direcao = caminho_direcao
@@ -80,6 +85,7 @@ class EstadoBusca:
         self.custo_acumulado = custo_acumulado
         self.heuristica = heuristica
         self.fatorial_de_custo = custo_acumulado + heuristica
+
 
 class MinHeap:
     """Implementação de uma Min-Heap que armazena objetos da classe EstadoBusca, ordenando de modo que o elemento de menor custo acumulado sempre fica na raiz."""
@@ -108,13 +114,15 @@ class MinHeap:
         # Verifica se o filho esquerdo é menor
         if (
             esquerda < len(self.heap)
-            and self.heap[esquerda].fatorial_de_custo < self.heap[menor].fatorial_de_custo
+            and self.heap[esquerda].fatorial_de_custo
+            < self.heap[menor].fatorial_de_custo
         ):
             menor = esquerda
         # Verifica se o filho direito é menor
         if (
             direita < len(self.heap)
-            and self.heap[direita].fatorial_de_custo < self.heap[menor].fatorial_de_custo
+            and self.heap[direita].fatorial_de_custo
+            < self.heap[menor].fatorial_de_custo
         ):
             menor = direita
 
@@ -126,7 +134,9 @@ class MinHeap:
     def inserir(self, estado):
         """Insere um novo estado na heap e mantém a ordem mínima."""
         self.heap.append(estado)  # Adiciona no final
-        self.heapfy_subir(len(self.heap) - 1)  # Ajusta a posição do novo elemento de acordo com seu custo acumulado
+        self.heapfy_subir(
+            len(self.heap) - 1
+        )  # Ajusta a posição do novo elemento de acordo com seu custo acumulado
 
     def remover_min(self):
         """Remove e retorna o menor elemento da heap."""

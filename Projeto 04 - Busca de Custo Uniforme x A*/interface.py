@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 from re import *
 from time import *
 
+
 class Interface:
     """
     Classe que representa a interface gráfica do labirinto.
@@ -82,8 +83,8 @@ class Interface:
             "HISTORICO": lambda args: self.exibir_mensagem(
                 f"Movimentos: {self.agente.objeto_movel.historico_movimentos}\nCusto: {self.agente.custo_acumulado}"
             ),
-            "BUSCA_UNIFORME": lambda args: self.iniciar_busca("BUSCA_UNIFORME"),
-            "BUSCA_A": lambda args: self.iniciar_busca("BUSCA_A"),
+            "BUSCA_UNIFORME": lambda args: self.iniciar_busca("Busca uniforme"),
+            "BUSCA_A": lambda args: self.iniciar_busca("A*"),
         }
 
     def inicializa_frame_input_inicial(self):
@@ -182,7 +183,8 @@ class Interface:
             self.frame_input_inicial_baixo,
             text="CRIAR",
             height=50,
-            width=100,  # Define explicitamente a largura do botão
+            width=100,
+            cursor="hand2",
             command=self.criar_ambiente,
         )
         self.botao_enviar.grid(row=0, column=0, pady=(0, 20), sticky="nsew")
@@ -200,7 +202,7 @@ class Interface:
 
     def inicializa_frame_input_principal(self):
         """
-        Inicializa o frame principal, contendo o labirinto, console, método de entrada e botão de ajuda
+        Inicializa o frame principal, contendo o labirinto, console, método de entrada, botão de ajuda e de restart
         """
         self.frame_input_principal = CTkFrame(
             self.janela, width=500, fg_color=self.preto, corner_radius=0
@@ -210,11 +212,16 @@ class Interface:
         # Mantendo os tamanhos definidos
         self.frame_input_principal.grid_propagate(False)
 
+        self.frame_input_principal_cima = CTkFrame(
+            self.frame_input_principal, fg_color=self.preto, corner_radius=0
+        )
+
         self.frame_input_principal_baixo = CTkFrame(
             self.frame_input_principal, fg_color=self.preto, corner_radius=0
         )
         # Posicionando os frames na grade
         self.frame_input_principal_baixo.grid(row=2, column=0, sticky="sew", pady=0)
+        self.frame_input_principal_cima.grid(row=0, column=0, sticky="sew", pady=0)
 
         # Configurando colunas e linhas para centralizar o input
         self.frame_input_principal.grid_columnconfigure(0, weight=1)
@@ -224,15 +231,33 @@ class Interface:
 
         self.frame_input_principal_baixo.grid_columnconfigure(0, weight=1)
         self.frame_input_principal_baixo.grid_rowconfigure(0, weight=1)
+        self.frame_input_principal_cima.grid_columnconfigure(0, weight=1)
+        self.frame_input_principal_cima.grid_rowconfigure(0, weight=1)
 
         # Adicionando label
         self.label_console = CTkLabel(
-            self.frame_input_principal,
+            self.frame_input_principal_cima,
             text="Console",
             text_color=self.branco,
             font=(f"{self.fonte}", 20),
         )
-        self.label_console.grid(row=0, column=0, padx=15, pady=(15, 0), sticky="ew")
+        self.label_console.grid(
+            row=0, column=0, padx=(15, 0), pady=(15, 0), sticky="nsw"
+        )
+
+        # Adicionando botão de restart
+        self.botao_restart = CTkButton(
+            self.frame_input_principal_cima,
+            cursor="hand2",
+            width=50,
+            text="🗘",
+            font=(f"{self.fonte}", 30),
+            command= lambda: self.resetar_labirinto(),
+        )
+
+        self.botao_restart.grid(
+            row=0, column=1, padx=(0, 15), pady=(15, 0), sticky="nse"
+        )
 
         # Adicionando caixa de texto
         self.caixa_texto = CTkTextbox(
@@ -244,7 +269,8 @@ class Interface:
             "▶ Parede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas\n"
             "▶ Lerpos: retorna a posição que o objeto movel se encontra\n"
             "▶ Historico: retorna a ordem de movimento e custo total acumulado\n"
-            "▶ Buscar: inicia uma busca pelo menor caminho, se for possível a executa\n",
+            "▶ Busca_uniforme: inicia uma busca uniforme pelo menor caminho, se for possível a executa o caminho\n",
+            "▶ Busca_a: inicia uma busca utilizando o algoritmo A*, se for possível a executa o caminho\n",
         )
         self.caixa_texto.grid(row=1, column=0, padx=15, pady=(15, 0), sticky="nsew")
         self.caixa_texto.tag_add("center", "1.0", "end")
@@ -265,13 +291,15 @@ class Interface:
         # Adicionando um botão flutuante
         self.botao_comandos = CTkButton(
             self.frame_input_principal_baixo,
+            cursor="hand2",
             text="Mostrar Comandos",
             command=lambda: self.exibir_mensagem(
                 "Ir X: move o objeto movel na direção X ∈ {N, S, L, O, NO, NE, SE, SO}\n"
                 "▶ Parede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas\n"
                 "▶ Lerpos: retorna a posição que o objeto movel se encontra\n"
                 "▶ Historico: retorna a ordem de movimento e custo total acumulado\n"
-                "▶ Buscar: inicia uma busca pelo menor caminho, se for possível a executa"
+                "▶ Busca_uniforme: inicia uma busca uniforme pelo menor caminho, se for possível a executa o caminho\n",
+                "▶ Busca_a: inicia uma busca utilizando o algoritmo A*, se for possível a executa o caminho\n",
             ),
         )
         self.botao_comandos.grid(row=1, column=1, padx=15, pady=15, sticky="nsew")
@@ -354,8 +382,10 @@ class Interface:
         self.imagem_saida_tk = ImageTk.PhotoImage(self.imagem_saida)
         # Carregando a imagem do objeto_movel
         self.imagem_objeto_movel = Image.open("assets/explorador.png")
+        img_largura = largura_celula * 0.75
+        img_altura = altura_celula * 0.75
         self.imagem_objeto_movel = self.imagem_objeto_movel.resize(
-            (int(largura_celula), int(altura_celula)), Image.Resampling.LANCZOS
+            (int(img_altura), int(img_largura)), Image.Resampling.LANCZOS
         )
         self.imagem_objeto_movel_tk = ImageTk.PhotoImage(self.imagem_objeto_movel)
 
@@ -390,7 +420,10 @@ class Interface:
                         x0, y0, x1, y1, outline="#C1C1C1", fill=cor
                     )
                     self.imagem_objeto_movel = self.canvas_labirinto.create_image(
-                        x0, y0, anchor="nw", image=self.imagem_objeto_movel_tk
+                        (x0 + (largura_celula / 8)),
+                        (y0 + (altura_celula / 8)),
+                        anchor="nw",
+                        image=self.imagem_objeto_movel_tk,
                     )
                     self.canvas_labirinto.tag_raise(self.imagem_objeto_movel)
                 else:
@@ -477,16 +510,26 @@ class Interface:
         # Executa o ciclo de raciocínio do agente
         self.exibir_mensagem("Iniciando busca...")
         self.agente.iniciar_plano_grafo()
-        if tipo_de_busca == "BUSCA_UNIFORME":
-            sequencia_direcao, sequencia_coordenadas = self.agente.buscar_rota_uniforme()
-        elif tipo_de_busca == "BUSCA_A":
-            sequencia_direcao, sequencia_coordenadas = self.agente.buscar_rota_a_estrela()
+
+        if tipo_de_busca == "Busca uniforme":
+            sequencia_direcao, sequencia_coordenadas, passos = (
+                self.agente.buscar_rota_uniforme()
+            )
+        elif tipo_de_busca == "A*":
+            sequencia_direcao, sequencia_coordenadas, passos = (
+                self.agente.buscar_rota_a_estrela()
+            )
         else:
             self.exibir_mensagem("Erro, tipo de busca não encontrado")
             return
-        
+
         self.agente.definir_plano(sequencia_direcao, sequencia_coordenadas)
-        self.exibir_mensagem(f"Plano a ser seguido: {sequencia_direcao}")
+        self.exibir_mensagem(
+            "Informações da buca:\n"
+            f"Algorítmo utilizado: {tipo_de_busca}\n"
+            f"Custo da busca: {passos}\n"
+            f"Plano a ser seguido: {sequencia_direcao}\n"
+        )
         self.executar_plano()
 
     def executar_plano(self):
@@ -500,9 +543,11 @@ class Interface:
             self.atualizar_labirinto(nova_posicao, "objeto_movel")
 
             # Agendar o próximo ciclo após 500ms
-            self.janela.after(1000, self.executar_plano)
+            self.janela.after(500, self.executar_plano)
         else:
-            self.exibir_mensagem(f"Plano concluído! Custo total: {self.agente.custo_acumulado}")
+            self.exibir_mensagem(
+                f"Plano concluído! Custo deslocamento: {self.agente.custo_acumulado}"
+            )
 
     def exibir_mensagem(self, mensagem):
         """
@@ -530,29 +575,148 @@ class Interface:
 
     def atualizar_parede(self, coordenadas, largura_celula, altura_celula):
         """
-        Atualiza o canvas com as novas paredes.
+        Atualiza o canvas com novas paredes, formando um octógono com um efeito de expansão
+        a partir do centro da célula, até atingir 80% do tamanho total.
+        As diagonais do octógono terão 4 vezes o comprimento dos lados horizontais e verticais.
         """
         for par in coordenadas:
-            x0 = par[1] * largura_celula
-            y0 = (self.ambiente.altura - 1 - par[0]) * altura_celula
-            x1 = x0 + largura_celula
-            y1 = y0 + altura_celula
-            self.canvas_labirinto.create_rectangle(
-                x0, y0, x1, y1, outline=self.branco, fill=self.preto
+            # Calcula as coordenadas da célula
+            esquerda = par[1] * largura_celula
+            topo = (self.ambiente.altura - 1 - par[0]) * altura_celula
+            direita = esquerda + largura_celula
+            baixo = topo + altura_celula
+
+            # Determina o centro da célula
+            centro_x = (esquerda + direita) / 2
+            centro_y = (topo + baixo) / 2
+
+            tamanho = min(largura_celula, altura_celula)
+            metade_lado_pequeno = tamanho / 10
+            metade_lado_grande = (tamanho * 8) / 10
+
+            # Garantir que o octógono se ajuste dentro da célula
+            if metade_lado_grande > largura_celula / 2:
+                metade_lado_grande = (
+                    largura_celula / 2
+                )  # Corrige se ultrapassar a largura da célula
+            if metade_lado_grande > altura_celula / 2:
+                metade_lado_grande = (
+                    altura_celula / 2
+                )  # Corrige se ultrapassar a altura da célula
+
+            # Inicializa o octógono com tamanho zero no centro
+            octogono = self.canvas_labirinto.create_polygon(
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                centro_x,
+                centro_y,
+                outline=self.preto,
+                fill=self.preto,
             )
+
+            # Inicia o efeito de expansão a partir do centro
+            self.expandir_octogono(
+                octogono, centro_x, centro_y, metade_lado_pequeno, metade_lado_grande
+            )
+
+    def expandir_octogono(
+        self,
+        octogono,
+        centro_x,
+        centro_y,
+        metade_lado_pequeno_final,
+        metade_lado_grande_final,
+        passo=1,
+        atraso=3,
+    ):
+        """
+        Expande o octógono a partir do centro até atingir o tamanho final.
+
+        Parâmetros:
+        - octogono: identificador do octógono no canvas.
+        - centro_x, centro_y: ponto central da célula.
+        - metade_lado_pequeno_final: tamanho final dos lados horizontais e verticais.
+        - metade_lado_grande_final: tamanho final dos lados diagonais.
+        - passo: incremento do tamanho a cada atualização.
+        - atraso: intervalo (em milissegundos) entre as atualizações.
+        """
+        # Define o tamanho inicial como zero
+        metade_lado_pequeno = 0
+        metade_lado_grande = 0
+
+        def atualizar_expansao():
+            nonlocal metade_lado_pequeno, metade_lado_grande
+
+            # Expande de forma controlada
+            if metade_lado_pequeno <= metade_lado_pequeno_final:
+                metade_lado_pequeno = min(
+                    metade_lado_pequeno + passo, metade_lado_pequeno_final
+                )
+            if metade_lado_grande <= metade_lado_grande_final:
+                metade_lado_grande = min(
+                    metade_lado_grande + passo, metade_lado_grande_final
+                )
+
+            # Calcula os vértices do octógono
+            pontos = [
+                # Pontos superiores
+                (centro_x - metade_lado_pequeno, centro_y - metade_lado_grande),
+                (centro_x + metade_lado_pequeno, centro_y - metade_lado_grande),
+                # Pontos direitos
+                (centro_x + metade_lado_grande, centro_y - metade_lado_pequeno),
+                (centro_x + metade_lado_grande, centro_y + metade_lado_pequeno),
+                # Pontos inferiores
+                (centro_x + metade_lado_pequeno, centro_y + metade_lado_grande),
+                (centro_x - metade_lado_pequeno, centro_y + metade_lado_grande),
+                # Pontos esquerdos
+                (centro_x - metade_lado_grande, centro_y + metade_lado_pequeno),
+                (centro_x - metade_lado_grande, centro_y - metade_lado_pequeno),
+            ]
+
+            # Atualiza as coordenadas do octógono no canvas
+            self.canvas_labirinto.coords(octogono, *sum(pontos, ()))
+
+            # Se ainda não atingiu o tamanho final, agenda a próxima atualização
+            if (
+                metade_lado_pequeno < metade_lado_pequeno_final
+                or metade_lado_grande < metade_lado_grande_final
+            ):
+                self.canvas_labirinto.after(atraso, atualizar_expansao)
+
+        atualizar_expansao()
 
     def atualizar_objeto_movel(self, coordenadas, largura_celula, altura_celula):
         """
         Atualiza o canvas com a nova posição do objeto_movel.
         """
-        x0 = coordenadas[1] * largura_celula
-        y0 = (self.ambiente.altura - 1 - coordenadas[0]) * altura_celula
+        x0 = coordenadas[1] * largura_celula + (largura_celula / 8)
+        y0 = (self.ambiente.altura - 1 - coordenadas[0]) * altura_celula + (
+            altura_celula / 8
+        )
         self.mover_imagem_objeto_movel(x0, y0)
+
+        if self.agente.teste_objetivo():
+            mensagem = f"O objeto movel alcançou ao destino final!\nCusto total: {self.agente.custo_acumulado}"
+            CTkMessagebox(title="Objetivo Alcançado", message=mensagem)
+            self.exibir_mensagem("O objeto movel alcançou ao destino final")
 
     def mover_imagem_objeto_movel(self, x0, y0):
         """
         Move a imagem do objeto_movel até (x0, y0) recursivamente pixel a pixel.
         """
+
         coords = self.canvas_labirinto.bbox(self.imagem_objeto_movel)
         if not coords:
             return  # Se a imagem não for encontrada, sai da função
@@ -563,19 +727,21 @@ class Interface:
         passo_x = 1 if x < x0 else -1
         passo_y = 1 if y < y0 else -1
 
-        if abs(x - x0) > 1 or abs(y - y0) > 1:
+        if abs(x - x0) > 3 or abs(y - y0) > 1:
             self.canvas_labirinto.move(self.imagem_objeto_movel, passo_x, passo_y)
             self.canvas_labirinto.tag_raise(self.imagem_objeto_movel)
             self.janela.after(3, lambda: self.mover_imagem_objeto_movel(x0, y0))
         else:
-            if self.agente.teste_objetivo():
-                mensagem = f"O objeto_movel chegou ao destino final!\nCusto total: {self.agente.custo_acumulado}"
-                CTkMessagebox(title="Objetivo Alcançado", message=mensagem)
             self.canvas_labirinto.moveto(self.imagem_objeto_movel, x0, y0)
-
+     
+    def resetar_labirinto(self):
+        self.ambiente.resetar_ambiente()
+        self.agente.resetar_agente(self.ambiente.grid, self.ambiente.comeco)
+        self.mostrar_labirinto()
+        self.exibir_mensagem("Labirinto redefinido\n")
 
 ########################################################################################
-# Funções de manipulação de string
+# Funções para manipulação de string
 
 
 def dividir_string(s):
@@ -603,39 +769,3 @@ def separar_coordenadas(s):
         x, y = map(int, par.split(","))
         coordenadas.append((x, y))
     return coordenadas
-
-
-def formatar_vizinhos(vizinhos):
-    """
-    Formata os vizinhos em uma matriz 3x3 com os seguintes símbolos:
-    ■ para lugares com None ou parede,
-    □ para lugares vazios,
-    ⊗ no meio para o objeto,
-    ★ para a saída.
-    """
-
-    # Função auxiliar para obter o valor formatado
-    def valor_formatado(chave):
-        valor = vizinhos.get(chave)
-        if valor is None or valor == "⬛":  # Paredes ou fora dos limites
-            return "■"
-        elif valor == "⬜":  # Lugar vazio
-            return "□"
-        elif valor == "🟩":  # Saída
-            return "★"
-        else:
-            return "□"  # Posição livre
-
-    # Monta a matriz 3x3 com as posições correspondentes:
-    # Linha 1: [NO, N, NE]
-    # Linha 2: [O, Obj, L]
-    # Linha 3: [SO, S, SE]
-    matriz = [
-        [valor_formatado("NO"), valor_formatado("N"), valor_formatado("NE")],
-        [valor_formatado("O"), "⊗", valor_formatado("L")],
-        [valor_formatado("SO"), valor_formatado("S"), valor_formatado("SE")],
-    ]
-
-    # Cria a string formatada com cada linha separada por nova linha
-    linhas_formatadas = [" ".join(linha) for linha in matriz]
-    return "\n".join(linhas_formatadas)

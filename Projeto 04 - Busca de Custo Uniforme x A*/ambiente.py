@@ -32,15 +32,16 @@ class Ambiente:
         self.altura = altura
         self.largura = largura
         self.grid = [["⬜" for _ in range(largura)] for _ in range(altura)]
-        self.grid.reverse()  
+        self.grid.reverse()
 
     def exibir(self):
         """
-        Exibe o grid no terminal.
+        Exibe o grid no terminal se a altura e largura forem menores do que 20.
         """
-        for linha in self.grid:
-            print("".join(linha))
-        print("\n")
+        if self.altura <= 20 and self.largura <= 20:
+            for linha in self.grid:
+                print("".join(linha))
+            print("\n")
 
     def definir_altura(self, altura):
         """
@@ -307,24 +308,12 @@ class Ambiente:
                     "Não é possível inserir uma parede no objetivo ou objeto móvel",
                 )
         return True, ""
+    
+    def resetar_ambiente(self):
 
-    def obter_vizinhos(self, estado_atual):
-        """
-        Retorna um dicionário com as direções e os valores do grid nas posições vizinhas
-        a partir do estado atual do objeto_movel.
-        """
-        vizinhos = {}
-
-        for direcao, (dx, dy) in self.objeto_movel.DIRECOES.items():
-            nova_posicao = (estado_atual[0] + dx, estado_atual[1] + dy)
-            # Verifica se a nova posição está dentro dos limites do grid
-            if (
-                0 <= nova_posicao[0] < self.altura
-                and 0 <= nova_posicao[1] < self.largura
-            ):
-                valor = self.grid[self.altura - 1 - nova_posicao[0]][nova_posicao[1]]
-                vizinhos[direcao] = valor
-            else:
-                vizinhos[direcao] = None  # Fora dos limites do grid
-
-        return vizinhos
+        self.grid = [["⬜" for _ in range(self.largura)] for _ in range(self.altura)]
+        self.grid[self.comeco[0]][self.comeco[1]] = "🟦"
+        self.grid[self.saida[0]][self.saida[1]] = "🟩"
+        self.grid.reverse()
+        print("\nAmbiente resetado\n")
+        self.exibir()
