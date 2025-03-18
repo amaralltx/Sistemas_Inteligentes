@@ -269,7 +269,7 @@ class Interface:
             "▶ Parede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas\n"
             "▶ Lerpos: retorna a posição que o objeto movel se encontra\n"
             "▶ Historico: retorna a ordem de movimento e custo total acumulado\n"
-            "▶ Busca_uniforme: inicia uma busca uniforme pelo menor caminho, se for possível a executa o caminho\n",
+            "▶ Busca_uniforme: inicia uma busca uniforme pelo menor caminho, se for possível a executa o caminho\n"
             "▶ Busca_a: inicia uma busca utilizando o algoritmo A*, se for possível a executa o caminho\n",
         )
         self.caixa_texto.grid(row=1, column=0, padx=15, pady=(15, 0), sticky="nsew")
@@ -298,7 +298,7 @@ class Interface:
                 "▶ Parede x1,y1 x2,y2 ... xn,yn: insere parede nas coordenadas fornecidas\n"
                 "▶ Lerpos: retorna a posição que o objeto movel se encontra\n"
                 "▶ Historico: retorna a ordem de movimento e custo total acumulado\n"
-                "▶ Busca_uniforme: inicia uma busca uniforme pelo menor caminho, se for possível a executa o caminho\n",
+                "▶ Busca_uniforme: inicia uma busca uniforme pelo menor caminho, se for possível a executa o caminho\n"
                 "▶ Busca_a: inicia uma busca utilizando o algoritmo A*, se for possível a executa o caminho\n",
             ),
         )
