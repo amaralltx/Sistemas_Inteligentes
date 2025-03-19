@@ -18,8 +18,8 @@ class Interface:
         self.janela.title("Labirinto")
         self.janela.geometry("1250x750")
         self.janela.resizable(False, False)
-        self.janela.option_add("*Font", ("Montserrrat", 18))
-        self.fonte = ("Montserrrat", 14)
+        self.janela.option_add("*Font", ("Montserrrat", 12))
+        self.fonte = ("Montserrrat", 12)
 
         # Obter as dimensões da tela
         largura_tela = self.janela.winfo_screenwidth()
@@ -262,6 +262,7 @@ class Interface:
         # Adicionando caixa de texto
         self.caixa_texto = CTkTextbox(
             self.frame_input_principal,
+            font=self.fonte
         )
         self.caixa_texto.insert(
             "0.0",
@@ -351,6 +352,8 @@ class Interface:
         self.mostrar_labirinto()
         self.alternar_widgets()
 
+
+    # TODO: alterar a forma que o labirinto é exbibido no canvas, começa com uma névoa e revela os vizinhos quando o objeto move
     def mostrar_labirinto(self):
         """
         Configura e exibe o labirinto no canvas.
@@ -380,6 +383,7 @@ class Interface:
             (int(largura_celula), int(altura_celula)), Image.Resampling.LANCZOS
         )
         self.imagem_saida_tk = ImageTk.PhotoImage(self.imagem_saida)
+
         # Carregando a imagem do objeto_movel
         self.imagem_objeto_movel = Image.open("assets/explorador.png")
         img_largura = largura_celula * 0.75
@@ -419,13 +423,14 @@ class Interface:
                     self.canvas_labirinto.create_rectangle(
                         x0, y0, x1, y1, outline="#C1C1C1", fill=cor
                     )
-                    self.imagem_objeto_movel = self.canvas_labirinto.create_image(
+                    self.id_imagem_objeto_movel = self.canvas_labirinto.create_image(
                         (x0 + (largura_celula / 8)),
                         (y0 + (altura_celula / 8)),
                         anchor="nw",
                         image=self.imagem_objeto_movel_tk,
                     )
-                    self.canvas_labirinto.tag_raise(self.imagem_objeto_movel)
+                    self.canvas_labirinto.tag_raise(self.id_imagem_objeto_movel)
+                    self.imagem_objeto_movel_direcao = "N" # Começa apontando para o norte
                 else:
                     cor = self.branco
                     self.canvas_labirinto.create_rectangle(
@@ -473,7 +478,7 @@ class Interface:
         if validador:
             self.ambiente.adicionar_parede(coordenadas)
             self.agente.definir_grid(self.ambiente.grid)
-            self.atualizar_labirinto(coordenadas, "parede")
+            self.atualizar_labirinto(coordenadas, "parede", None)
             self.exibir_mensagem("Obstáculo adicionado ao labirinto!")
         else:
             self.exibir_mensagem(mensagem_de_erro)
@@ -496,7 +501,7 @@ class Interface:
             nova_posicao = self.agente.obter_estado_objeto()
             self.ambiente.atualizar_objeto_movel(nova_posicao)
             self.agente.definir_grid(self.ambiente.grid)
-            self.atualizar_labirinto(nova_posicao, "objeto_movel")
+            self.atualizar_labirinto(nova_posicao, "objeto_movel", direcao)
             self.exibir_mensagem(f"objeto_movel movido para {direcao}")
             return True
         else:
@@ -533,14 +538,14 @@ class Interface:
         self.executar_plano()
 
     def executar_plano(self):
-        sucesso, nova_posicao = self.agente.ciclo_de_raciocinio()
+        sucesso, nova_posicao, nova_direcao = self.agente.ciclo_de_raciocinio()
         if sucesso:
 
             self.exibir_mensagem(f"Executando ciclo: indo para {nova_posicao}")
             # Atualiza o ambiente e o canvas
             self.ambiente.atualizar_objeto_movel(nova_posicao)
             self.agente.definir_grid(self.ambiente.grid)
-            self.atualizar_labirinto(nova_posicao, "objeto_movel")
+            self.atualizar_labirinto(nova_posicao, "objeto_movel", nova_direcao)
 
             # Agendar o próximo ciclo após 500ms
             self.janela.after(500, self.executar_plano)
@@ -557,7 +562,7 @@ class Interface:
         self.caixa_texto.insert("end", f"▶ {mensagem}\n")
         self.caixa_texto.configure(state="disable")
 
-    def atualizar_labirinto(self, coordenadas, elemento):
+    def atualizar_labirinto(self, coordenadas, elemento, direcao):
         """
         Atualiza o labirinto com o novo elemento.
         """
@@ -571,7 +576,7 @@ class Interface:
         if elemento == "parede":
             self.atualizar_parede(coordenadas, largura_celula, altura_celula)
         elif elemento == "objeto_movel":
-            self.atualizar_objeto_movel(coordenadas, largura_celula, altura_celula)
+            self.atualizar_objeto_movel(coordenadas, direcao, largura_celula, altura_celula)
 
     def atualizar_parede(self, coordenadas, largura_celula, altura_celula):
         """
@@ -697,7 +702,7 @@ class Interface:
 
         atualizar_expansao()
 
-    def atualizar_objeto_movel(self, coordenadas, largura_celula, altura_celula):
+    def atualizar_objeto_movel(self, coordenadas, direcao, largura_celula, altura_celula):
         """
         Atualiza o canvas com a nova posição do objeto_movel.
         """
@@ -705,19 +710,42 @@ class Interface:
         y0 = (self.ambiente.altura - 1 - coordenadas[0]) * altura_celula + (
             altura_celula / 8
         )
-        self.mover_imagem_objeto_movel(x0, y0)
+        self.mover_imagem_objeto_movel(x0, y0, direcao)
 
         if self.agente.teste_objetivo():
             mensagem = f"O objeto movel alcançou ao destino final!\nCusto total: {self.agente.custo_acumulado}"
             CTkMessagebox(title="Objetivo Alcançado", message=mensagem)
             self.exibir_mensagem("O objeto movel alcançou ao destino final")
 
-    def mover_imagem_objeto_movel(self, x0, y0):
+    def mover_imagem_objeto_movel(self, x0, y0, direcao):
         """
         Move a imagem do objeto_movel até (x0, y0) recursivamente pixel a pixel.
         """
+        mapeamento_direcoes = {
+            "N": 0,
+            "NE": -45,
+            "L": -90,
+            "SE": -135,
+            "S": 180, 
+            "SO": 135,
+            "O": 90,
+            "NO": 45,
+        }
 
-        coords = self.canvas_labirinto.bbox(self.imagem_objeto_movel)
+        if self.imagem_objeto_movel_direcao != direcao:
+            # Obtém o ângulo alvo com base na direção desejada
+            angulo_alvo = mapeamento_direcoes.get(direcao, 0)
+            
+            # Obtém o ângulo atual a partir da direção atual armazenada na variável (converte a string para ângulo)
+            angulo_atual = mapeamento_direcoes.get(self.imagem_objeto_movel_direcao, 0)
+            
+            # Inicia a rotação incremental do ângulo atual para o ângulo alvo
+            self.direcionar_imagem_objeto_movel(angulo_atual, angulo_alvo)
+            
+            # Atualiza a variável com a nova direção
+            self.imagem_objeto_movel_direcao = direcao
+
+        coords = self.canvas_labirinto.bbox(self.id_imagem_objeto_movel)
         if not coords:
             return  # Se a imagem não for encontrada, sai da função
 
@@ -728,12 +756,55 @@ class Interface:
         passo_y = 1 if y < y0 else -1
 
         if abs(x - x0) > 3 or abs(y - y0) > 1:
-            self.canvas_labirinto.move(self.imagem_objeto_movel, passo_x, passo_y)
-            self.canvas_labirinto.tag_raise(self.imagem_objeto_movel)
-            self.janela.after(3, lambda: self.mover_imagem_objeto_movel(x0, y0))
+            self.canvas_labirinto.move(self.id_imagem_objeto_movel, passo_x, passo_y)
+            self.canvas_labirinto.tag_raise(self.id_imagem_objeto_movel)
+            self.janela.after(3, lambda: self.mover_imagem_objeto_movel(x0, y0, direcao))
         else:
-            self.canvas_labirinto.moveto(self.imagem_objeto_movel, x0, y0)
-     
+            self.canvas_labirinto.moveto(self.id_imagem_objeto_movel, x0, y0)
+    
+    def direcionar_imagem_objeto_movel(self, angulo_atual, angulo_alvo):
+        """
+        Rotaciona incrementalmente a imagem do objeto_movel, do angulo_atual para o angulo_alvo,
+        chamando recursivamente até que o ângulo desejado seja atingido.
+        """
+        incremento = 5
+
+        # Verifica se chegou ao angulo_alvo, somando o incrimento se deve rotacionar para esquerda
+        # e subtraindo caso deva rotacionar para a direita
+        if angulo_atual < angulo_alvo:
+            angulo_atual += incremento
+            if angulo_atual > angulo_alvo:
+                angulo_atual = angulo_alvo
+        elif angulo_atual > angulo_alvo:
+            angulo_atual -= incremento
+            if angulo_atual < angulo_alvo:
+                angulo_atual = angulo_alvo
+
+        self.rotacionar_imagem_objeto_movel(angulo_atual)
+
+        if angulo_atual != angulo_alvo:
+            self.canvas_labirinto.after(2, self.direcionar_imagem_objeto_movel, angulo_atual, angulo_alvo)
+
+    def rotacionar_imagem_objeto_movel(self, angulo):
+        """
+        Rotaciona a imagem do objeto_movel em torno do seu centro, sem expandir seu tamanho.
+        """
+        imagem = self.imagem_objeto_movel
+
+        # Calcula o centro da imagem
+        largura, altura = imagem.size
+        centro_x = largura / 2
+        centro_y = altura / 2
+
+        # Rotaciona a imagem em torno do centro com expand=False para manter o mesmo tamanho e evitar deslocamento
+        imagem_rotacionada = imagem.rotate(angulo, resample=Image.BICUBIC, center=(centro_x, centro_y), expand=False)
+
+        # Converte a imagem rotacionada para o formato que o tkinter pode exibir
+        self.imagem_rotacionada_tk = ImageTk.PhotoImage(imagem_rotacionada)
+
+        # Atualiza a imagem no canvas
+        self.canvas_labirinto.itemconfig(self.id_imagem_objeto_movel, image=self.imagem_rotacionada_tk)
+
     def resetar_labirinto(self):
         self.ambiente.resetar_ambiente()
         self.agente.resetar_agente(self.ambiente.grid, self.ambiente.comeco)

@@ -335,7 +335,7 @@ class Agente:
             proxima_acao = self.plano_direcao.pop(0)
             nova_posicao = self.plano_coordenada.pop(0)
             self.ir(proxima_acao, nova_posicao)
-            return True, nova_posicao
+            return True, nova_posicao, proxima_acao
         else:
             print("Plano concluído!")
             return False, None
